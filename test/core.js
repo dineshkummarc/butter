@@ -9,6 +9,10 @@
   QUnit.config.testTimeout = 20000;
   QUnit.config.reorder = false;
 
+  window._testInitCallback = function(){};
+  window._testBeforeCallback = function(){};
+  window._testAfterCallback = function(){};
+
   function createButter( callback ){
     stop();
 
@@ -583,11 +587,11 @@
           foo: 2
         }
       });
-      ok( m.popcornString.indexOf( "{\"foo\":2}" ) > -1, "Popcorn string contained specified popcornOptions." );
+      ok( m.generatePopcornString().indexOf( "{\"foo\":2}" ) > -1, "Popcorn string contained specified popcornOptions." );
       m.popcornOptions = {
         bar: 3
       };
-      ok( m.popcornString.indexOf( "{\"bar\":3}" ) > -1, "Popcorn string contained specified popcornOptions again." );
+      ok( m.generatePopcornString().indexOf( "{\"bar\":3}" ) > -1, "Popcorn string contained specified popcornOptions again." );
     });
   });
 
@@ -603,7 +607,7 @@
         te1 = t1.addTrackEvent( { popcornOptions: { start: 0, end: 6, text: messedUpString, target: "stringSanity" }, type: "footnote" } );
         butter.addTarget( { name: "beep" } );
 
-        var func = Function( "", m1.popcornString );
+        var func = Function( "", m1.generatePopcornString() );
             pop = func();
 
         equals( document.getElementById( "stringSanity" ).children[ 0 ].innerHTML, messedUpString, "String escaping in exported HTML is fine" );
@@ -612,6 +616,30 @@
     });
   });
 
+  asyncTest( "Export HTML snapshotting", function() {
+    expect( 1 );
+    createButter( function( butter ){
+      var m1 = butter.addMedia( { url:"../external/popcorn-js/test/trailer.ogv", target:"mediaDiv" } );
+
+      butter.listen( "mediaready", function( e ) {
+        butter.page.snapshotHTML();
+
+        t1 = m1.addTrack();
+        te1 = t1.addTrackEvent({
+          popcornOptions: {
+            start: 0,
+            end: 6,
+            text: "OBVIOUS",
+            target: "stringSanity"
+          },
+          type: "footnote"
+        });
+
+        equals( butter.getHTML().match( "OBVIOUS" ).length, 1, "TrackEvent wasn't exported" );
+        start();
+      });
+    });
+  });
   module( "Debug functionality" );
   asyncTest( "Debug enables/disables logging", 4, function() {
     createButter(function( butter ) {
@@ -636,6 +664,42 @@
       }
       butter.listen( "mediaready", ready );
       butter.addMedia({ url: "../external/popcorn-js/test/trailer.ogv", target: "mediaDiv" });
+    });
+  });
+
+  module( "Popcorn scripts and callbacks");
+  asyncTest( "Existence and execution", function(){
+    expect( 6 );
+
+    createButter( function( butter ){
+
+      var theZONE = "";
+
+      window._testInitCallback = function(){ theZONE += "i"; };
+      window._testBeforeCallback = function(){ theZONE += "b"; };
+      window._testAfterCallback = function(){ theZONE += "a" };
+
+      var initScript = document.createElement( "script" );
+      initScript.innerHTML = '"inline test init from element"';
+      initScript.id = "init-script";
+      document.head.appendChild( initScript );
+
+      var m1 = butter.addMedia( { name: "Media 1", target: "audio-test", url: "../external/popcorn-js/test/trailer.ogv" } );
+
+      m1.onReady(function(){
+        butter.preparePopcornScriptsAndCallbacks(function(){
+          document.head.removeChild( initScript );
+          var exported = butter.getHTML();
+          ok( exported.indexOf( "inline test init from element" ) > -1, "found init script" );
+          ok( exported.indexOf( "inline test before" ) > -1, "found before script" );
+          ok( exported.indexOf( "inline test after" ) > -1, "found after script" );
+          ok( theZONE.indexOf( "i" ) > -1, "init callback called" );
+          ok( theZONE.indexOf( "b" ) > -1, "before callback called" );
+          ok( theZONE.indexOf( "a" ) > -1, "after callback called" );
+          start();  
+        });
+      });
+
     });
   });
 })(window, window.document );

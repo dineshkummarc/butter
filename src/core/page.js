@@ -11,7 +11,8 @@ define( [ "core/logger", "core/eventmanager" ], function( Logger, EventManager )
         PLAYER_URL = POPCORN_BASE_URL + "modules/player/popcorn.player.js",
         PLAYER_TYPE_URL = POPCORN_BASE_URL + "players/{type}/popcorn.{type}.js";
 
-    var _eventManager = new EventManager( this );
+    var _eventManager = new EventManager( this ),
+        _snapshot;
 
     this.scrape = function() {
       var rootNode = document.body,
@@ -80,10 +81,20 @@ define( [ "core/logger", "core/eventmanager" ], function( Logger, EventManager )
     };
 
     this.getHTML = function( popcornStrings ){
-      var html = document.createElement( "html" ),
-          head = document.getElementsByTagName( "head" )[ 0 ].cloneNode( true ),
-          body = document.getElementsByTagName( "body" )[ 0 ].cloneNode( true ),
-          i, toClean, toExclude, node;
+      var html, head, body, i, toClean, toExclude, node;
+
+      //html tag to which body and head are appended below
+      html = document.createElement( "html" );
+
+      // if there is already a snapshot, clone it instead of cloning the current dom
+      if( !_snapshot ){
+        head = document.getElementsByTagName( "head" )[ 0 ].cloneNode( true );
+        body = document.getElementsByTagName( "body" )[ 0 ].cloneNode( true );
+      }
+      else{
+        head = _snapshot.head.cloneNode( true );
+        body = _snapshot.body.cloneNode( true );
+      }
 
       toExclude = Array.prototype.slice.call( head.querySelectorAll( "*[data-butter-exclude]" ) );
       toExclude = toExclude.concat( Array.prototype.slice.call( head.querySelectorAll( "*[data-requiremodule]" ) ) );
@@ -97,6 +108,7 @@ define( [ "core/logger", "core/eventmanager" ], function( Logger, EventManager )
         node = toClean[ i ];
         node.removeAttribute( "butter-clean" );
         node.removeAttribute( "data-butter" );
+        node.removeAttribute( "data-butter-default" );
 
         // obviously, classList is preferred (https://developer.mozilla.org/en/DOM/element.classList)
         if( node.classList ){
@@ -127,6 +139,23 @@ define( [ "core/logger", "core/eventmanager" ], function( Logger, EventManager )
 
       return "<html>" + html.innerHTML + "</html>";
     }; //getHTML
+
+    /* Take a snapshot of the current DOM and store it.
+     * Mainly for use with generatePopcornString() so as to not export unwanted DOM objects,
+     * a snapshot can be taken at any time (usually up to the template author).
+     */
+    this.snapshotHTML = function(){
+      _snapshot = {
+        head: document.getElementsByTagName( "head" )[ 0 ].cloneNode( true ),
+        body: document.getElementsByTagName( "body" )[ 0 ].cloneNode( true )
+      };
+    };
+
+    /* Forget DOM snapshots previously taken
+     */
+    this.eraseSnapshot = function(){
+      _snapshot = null;
+    };
 
   }; // page
 });
