@@ -18,6 +18,7 @@ define( [], function(){
 
     _element.className = "zoom-bar scroll-bar";
     _handle.className = "scroll-handle";
+    _handle.title = "Change the zoom level of the timeline";
 
     _element.appendChild( _handle );
 
@@ -49,11 +50,11 @@ define( [], function(){
 
     this.update = function( level ) {
       _rect = _element.getBoundingClientRect();
-      _handle.style.width = ( _rect.width / ZOOM_LEVELS ) + "px";
       _handleWidth = ( _rect.width / ZOOM_LEVELS );
-      _elementWidth = _rect.width; 
+      _handle.style.width = _handleWidth + "px";
+      _elementWidth = _rect.width;
       if( level !== undefined ){
-        _handle.style.left = ( level * _rect.width / ZOOM_LEVELS ) + "px";
+        _handle.style.left = ( level * _handleWidth ) + "px";
       } //if
     };
 
@@ -69,11 +70,11 @@ define( [], function(){
           p;
 
       if( posX > handleRect.right ) {
-        _handle.style.left = ( ( posX - elementRect.left ) - _handleWidth ) + "px"; 
+        _handle.style.left = ( ( posX - elementRect.left ) - _handleWidth ) + "px";
       } else {
-        _handle.style.left = posX - elementRect.left + "px"; 
+        _handle.style.left = posX - elementRect.left + "px";
       }
-      
+
       onMouseMove( e );
     }, false);
 

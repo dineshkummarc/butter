@@ -58,38 +58,40 @@
     } //colourHashFromType
 
     function createStyleForType( type ){
-      var styleContent = __newStyleSheet.innerHTML,
+      var styleContent = "",
           hash = colourHashFromType( type );
       styleContent +=__cssRulePrefix + "[" + __cssRuleProperty + "=\"" + type + "\"]{";
-      styleContent += "background: hsl( " + hash.h + ", " + hash.s + "%, " + hash.l + "% )";
+      styleContent += "background: hsl( " + hash.h + ", " + hash.s + "%, " + hash.l + "% );";
       styleContent += "}";
-      __newStyleSheet.innerHTML = styleContent;
+      __newStyleSheet.innerHTML = __newStyleSheet.innerHTML + styleContent;
     } //createStyleForType
 
     var PluginManager = function( butter, moduleOptions ) {
 
       var _plugins = [],
           _container = document.createElement( "div" ),
+          _listWrapper = document.createElement( "div" ),
           _listContainer = document.createElement( "div" ),
           _this = this,
           _pattern = '<div class="list-item $type_tool">$type</div>';
 
       _container.id = "butter-plugin";
       _listContainer.className = "list";
+      _listWrapper.className = "list-wrapper";
 
       var title = document.createElement( "div" );
       title.className = "title";
       title.innerHTML = "<span>My Events</span>";
       _container.appendChild( title );
-      _container.appendChild( _listContainer );
+      _listWrapper.appendChild( _listContainer );
+      _container.appendChild( _listWrapper );
 
-      var _scrollbar = new Scrollbars.Vertical( _container, _listContainer );
+      var _scrollbar = new Scrollbars.Vertical( _listWrapper, _listContainer );
       _container.appendChild( _scrollbar.element );
-
-      document.head.appendChild( __newStyleSheet );
 
       this._start = function( onModuleReady ){
         if( butter.ui ){
+          document.head.appendChild( __newStyleSheet );
           butter.ui.areas.tools.addComponent( _container );
           PluginList( butter );
         }
@@ -135,7 +137,9 @@
           }, 100);
 
           _plugins.push( plugin );
-          _listContainer.appendChild( plugin.createElement( _pattern ) );
+          if( moduleOptions.defaults && moduleOptions.defaults.indexOf( plugin.type ) > -1 ){
+            _listContainer.appendChild( plugin.createElement( _pattern ) );  
+          }
           butter.dispatch( "pluginadded", plugin );
         }
 
@@ -200,6 +204,23 @@
           } //if
         } //for
       }; //get
+
+      DragNDrop.droppable( _container, {
+        drop: function( element ){
+          if( element.getAttribute( "data-butter-draggable-type" ) === "plugin" ){
+            var pluginType = element.getAttribute( "data-butter-plugin-type" ),
+                plugin = _this.get( pluginType );
+            if( plugin ){
+              for( var i=0; i<_listContainer.childNodes.length; ++i ){
+                if( _listContainer.childNodes[ i ].getAttribute( "data-butter-plugin-type" ) === pluginType ){
+                  return;
+                }  
+              }
+              _listContainer.appendChild( plugin.createElement( _pattern ) );  
+            }
+          }
+        }
+      });
     }; //PluginManager
 
     PluginManager.__moduleName = "plugin";

@@ -14,6 +14,7 @@
             "./core/media",
             "./core/page",
             "./modules",
+            "./dependencies",
             "ui/ui",
             "util/xhr"
           ],
@@ -24,6 +25,7 @@
             Media,
             Page,
             Modules,
+            Dependencies,
             UI,
             XHR
           ){
@@ -494,22 +496,28 @@
             targets = scrapedObject.target,
             medias = scrapedObject.media;
 
-        _page.preparePopcorn(function() {
-          var i, j, il, jl, url;
+        _page.prepare(function() {
+          var i, j, il, jl, url, oldTarget, oldMedia, mediaPopcornOptions;
           for( i = 0, il = targets.length; i < il; ++i ) {
+            oldTarget = null;
             if( _targets.length > 0 ){
               for( j = 0, jl = _targets.length; j < jl; ++j ){
                 // don't add the same target twice
-                if( _targets[ j ].id !== targets[ i ].id ){
-                  _this.addTarget({ element: targets[ i ].id });
+                if( _targets[ j ].id === targets[ i ].id ){
+                  oldTarget = _targets[ j ];
+                  break;
                 } //if
               } //for j
             }
-            else{
+
+            if( !oldTarget ){
               _this.addTarget({ element: targets[ i ].id });
-            } //if
-          } //for i
+            }
+          }
+
           for( i = 0, il = medias.length; i < il; i++ ) {
+            oldMedia = null;
+            mediaPopcornOptions = null;
             url = "";
             if( ["VIDEO", "AUDIO" ].indexOf( medias[ i ].nodeName ) > -1 ) {
               url = medias[ i ].currentSrc;
@@ -519,17 +527,20 @@
             if( _media.length > 0 ){
               for( j = 0, jl = _media.length; j < jl; ++j ){
                 if( _media[ j ].id !== medias[ i ].id && _media[ j ].url !== url ){
-                  _this.addMedia({ target: medias[ i ].id, url: url });
+                  oldMedia = _media[ j ];
+                  break;
                 } //if
               } //for
             }
             else{
-              var mediaPopcornOptions;
               if( _config.mediaDefaults ){
                 mediaPopcornOptions = _config.mediaDefaults;
               }
-              _this.addMedia({ target: medias[ i ].id, url: url, popcornOptions: mediaPopcornOptions });
             } //if
+
+            if( !oldMedia ){
+              _this.addMedia({ target: medias[ i ].id, url: url, popcornOptions: mediaPopcornOptions });
+            }
           } //for
 
           if( callback ){
@@ -577,7 +588,7 @@
               }
 
             }
-          }
+          };
         }
 
         _defaultPopcornCallbacks = callbacks;
@@ -603,7 +614,7 @@
         }
 
         // if there are scripts to load, load them
-        if( toLoad ){
+        if( toLoad.length > 0 ){
           for( var i = 0; i < toLoad.length; ++i ){
             XHR.get( toLoad[ i ].url, toLoad[ i ].onLoad );
           }
@@ -612,7 +623,7 @@
           // otherwise, call the ready callback right away
           readyCallback();
         }
-      }
+      };
 
       function readConfig(){
         var icons = _config.icons,
@@ -635,21 +646,26 @@
         } //for
 
         //prepare modules first
-        var moduleCollection = Modules( _this, _config );
+        var moduleCollection = Modules( _this, _config ),
+            loader = Dependencies( _config );
 
-        _page = new Page( _config );
+        _this.loader = loader;
+
+        _page = new Page( loader, _config );
 
         _this.ui = new UI( _this, _config.ui );
 
-        //prepare the page next
-        preparePopcornScriptsAndCallbacks(function(){
-          preparePage(function(){
-            moduleCollection.ready(function(){
-              if( _config.snapshotHTMLOnReady ){
-                _page.snapshotHTML();
-              }
-              //fire the ready event
-              _em.dispatch( "ready", _this );              
+        _this.ui.load(function(){
+          //prepare the page next
+          preparePopcornScriptsAndCallbacks(function(){
+            preparePage(function(){
+              moduleCollection.ready(function(){
+                if( _config.snapshotHTMLOnReady ){
+                  _page.snapshotHTML();
+                }
+                //fire the ready event
+                _em.dispatch( "ready", _this );
+              });
             });
           });
         });

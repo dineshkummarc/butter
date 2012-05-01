@@ -59,10 +59,6 @@
                 }, 10 );
                 _em.dispatch( "mediaplaying" );
               },
-              timeout: function(){
-                _em.dispatch( "mediatimeout" );
-                _em.dispatch( "mediafailed", "timeout" );
-              },
               ended: function(){
                 _em.dispatch( "mediaended" );
               }
@@ -76,7 +72,19 @@
                   _popcornWrapper.updateEvent( te[ j ] );
                 }
               }
+              if( _view ){
+                _view.update();
+              }
               _em.dispatch( "mediaready" );
+            },
+            constructing: function(){
+              if( _view ){
+                _view.update();
+              }
+            },
+            timeout: function(){
+              _em.dispatch( "mediatimeout" );
+              _em.dispatch( "mediafailed", "timeout" );
             },
             fail: function( e ){
               _em.dispatch( "mediafailed", "error" );
